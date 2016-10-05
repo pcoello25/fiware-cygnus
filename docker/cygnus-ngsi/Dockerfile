@@ -54,6 +54,7 @@ ENV JAVA_HOME /usr/lib/jvm/java-1.6.0
 # Install
 RUN \
     # Add Cygnus user
+echo "1 => $(date '+%H%M%S')" && \
     adduser ${CYGNUS_USER} && \
     yum -y install nc java-1.6.0-openjdk-devel git && \
     curl --remote-name --location --insecure --silent --show-error "${MVN_URL}" && \
@@ -67,18 +68,24 @@ RUN \
     mkdir -p ${FLUME_HOME}/plugins.d/cygnus/lib && \
     mkdir -p ${FLUME_HOME}/plugins.d/cygnus/libext && \
     chown -R cygnus:cygnus ${FLUME_HOME} && \
+echo "2 => $(date '+%H%M%S')" && \
     # Make a shallow clone to help reduce final image size
     git clone --depth 1 ${GIT_URL_CYGNUS} ${CYGNUS_HOME} && \
+echo "3 => $(date '+%H%M%S')" && \
     cd ${CYGNUS_HOME} && \
     git checkout ${GIT_REV_CYGNUS} && \
     # Build and install cygnus-common
     cd ${CYGNUS_HOME}/cygnus-common && \
+echo "4 => $(date '+%H%M%S')" && \
     ${MVN_HOME}/bin/mvn clean compile exec:exec assembly:single && \
+echo "5 => $(date '+%H%M%S')" && \
     cp target/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar ${FLUME_HOME}/plugins.d/cygnus/libext/ && \
     ${MVN_HOME}/bin/mvn install:install-file -Dfile=${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar -DgroupId=com.telefonica.iot -DartifactId=cygnus-common -Dversion=${CYGNUS_VERSION} -Dpackaging=jar -DgeneratePom=false && \
     # Build and install cygnus-ngsi
     cd ${CYGNUS_HOME}/cygnus-ngsi && \
+echo "6 => $(date '+%H%M%S')" && \
     ${MVN_HOME}/bin/mvn clean compile exec:exec assembly:single && \
+echo "7 => $(date '+%H%M%S')" && \
     cp target/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar ${FLUME_HOME}/plugins.d/cygnus/lib/ && \
     # Install Cygnus Application script
     cp ${CYGNUS_HOME}/cygnus-common/target/classes/cygnus-flume-ng ${FLUME_HOME}/bin/ && \
@@ -90,9 +97,13 @@ RUN \
     mkdir -p /var/log/cygnus && \
     # Cleanup to thin the final image
     cd ${CYGNUS_HOME}/cygnus-common && \
+echo "8 => $(date '+%H%M%S')" && \
     ${MVN_HOME}/bin/mvn clean && \
+echo "9 => $(date '+%H%M%S')" && \
     cd ${CYGNUS_HOME}/cygnus-ngsi && \
+echo "10 => $(date '+%H%M%S')" && \
     ${MVN_HOME}/bin/mvn clean && \
+echo "11 => $(date '+%H%M%S')" && \
     rm -rf /root/.m2 && rm -rf ${MVN_HOME} && rm -rf ${FLUME_HOME}/docs && rm -rf ${CYGNUS_HOME}/doc && rm -f /*.tar.gz && \
     yum erase -y git java-1.6.0-openjdk-devel && unset JAVA_HOME && \
     rpm -qa redhat-logos gtk2 pulseaudio-libs libvorbis jpackage* groff alsa* atk cairo libX* | xargs -r rpm -e --nodeps && yum -y erase libss && \
@@ -101,9 +112,11 @@ RUN \
     bash -c 'localedef --list-archive | grep -v -e "en_US" | xargs localedef --delete-from-archive' && \
     /bin/cp -f /usr/lib/locale/locale-archive /usr/lib/locale/locale-archive.tmpl && \
     build-locale-archive && find ${CYGNUS_HOME} -name '.[^.]*' 2>/dev/null | xargs -r rm -rf && \
+echo "12 => $(date '+%H%M%S')" && \
     # Reduce two big jar files...
     pack200 ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar.pack.gz ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
     pack200 ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar.pack.gz ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
+echo "13 => $(date '+%H%M%S')" && \
     rm -f ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
     rm -f ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
     # Copy some files needed for starting cygnus-ngsi
