@@ -72,6 +72,7 @@ echo "2 => $(date '+%H%M%S')" && \
     # Make a shallow clone to help reduce final image size
     git clone --depth 1 ${GIT_URL_CYGNUS} ${CYGNUS_HOME} && \
 echo "3 => $(date '+%H%M%S')" && \
+echo "Git version $(git --version)" && \
     cd ${CYGNUS_HOME} && \
     git checkout ${GIT_REV_CYGNUS} && \
     # Build and install cygnus-common
