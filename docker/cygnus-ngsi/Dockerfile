@@ -84,6 +84,8 @@ echo "Git version $(git --version)" && \
     # Build and install cygnus-common
     cd ${CYGNUS_HOME}/cygnus-common && \
 echo "4 => $(date '+%H%M%S')" && \
+    mkdir -p ~/.m2 && \
+    cp ${CYGNUS_HOME}/docker/cygnus-ngsi/settings.xml ~/.m2 && \
     ${MVN_HOME}/bin/mvn -X -T 4 -B clean compile exec:exec assembly:single && \
 echo "5 => $(date '+%H%M%S')" && \
     cp target/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar ${FLUME_HOME}/plugins.d/cygnus/libext/ && \
