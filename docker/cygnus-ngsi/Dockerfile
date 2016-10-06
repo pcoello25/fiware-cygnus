@@ -41,7 +41,7 @@ ENV GIT_REV_CYGNUS "develop"
 
 ENV MVN_VER "3.2.5"
 ENV MVN_TGZ "apache-maven-${MVN_VER}-bin.tar.gz"
-ENV MVN_URL "http://www.eu.apache.org/dist/maven/maven-3/${MVN_VER}/binaries/${MVN_TGZ}"
+ENV MVN_URL "http://archive.apache.org/dist/maven/maven-3/${MVN_VER}/binaries/${MVN_TGZ}"
 ENV MVN_HOME "/opt/apache-maven"
 
 ENV FLUME_VER "1.4.0"
@@ -57,6 +57,11 @@ RUN \
 echo "1 => $(date '+%H%M%S')" && \
     adduser ${CYGNUS_USER} && \
     yum -y install nc java-1.6.0-openjdk-devel git && \
+    # Reconfigure URLs
+    APACHE_DOM="$(curl -s 'https://www.apache.org/dyn/closer.cgi?as_json=1' | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["preferred"]')" && \
+    MVN_URL="${APACHE_DOM}$(echo ${MVN_URL} | sed -r -e 's!http://[^/]*/dist/!!g')" && \
+    FLUME_URL="${APACHE_DOM}$(echo ${FLUME_URL} | sed -r -e 's!http://[^/]*/dist/!!g')" && \
+echo "${APACHE_DOM} ${MVN_URL} ${FLUME_URL}" && \
     curl --remote-name --location --insecure --silent --show-error "${MVN_URL}" && \
     tar xzvf ${MVN_TGZ} && \
     mv apache-maven-${MVN_VER} ${MVN_HOME} && \
