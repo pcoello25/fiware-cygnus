@@ -37,7 +37,7 @@ ENV CYGNUS_MONGO_USER "mongo"
 ENV CYGNUS_MONGO_PASS "mongo"
 
 ENV GIT_URL_CYGNUS "https://github.com/telefonicaid/fiware-cygnus.git"
-ENV GIT_REV_CYGNUS "develop"
+ENV GIT_REV_CYGNUS "tests"
 
 ENV MVN_VER "3.2.5"
 ENV MVN_TGZ "apache-maven-${MVN_VER}-bin.tar.gz"
