@@ -49,23 +49,24 @@ ENV FLUME_TGZ "apache-flume-${FLUME_VER}-bin.tar.gz"
 ENV FLUME_URL "http://archive.apache.org/dist/flume/${FLUME_VER}/${FLUME_TGZ}"
 ENV FLUME_HOME "/opt/apache-flume"
 
-ENV JAVA_HOME /usr/lib/jvm/java-1.7.0
+ARG JAVA_VERSION=1.6.0
 
 # Install
 RUN \
     # Add Cygnus user
 echo "1 => $(date '+%H%M%S')" && \
     adduser ${CYGNUS_USER} && \
-    yum -y install nc java-1.7.0-openjdk-devel git && \
+    yum -y install nc java-${JAVA_VERSION}-openjdk-devel git && \
+    export JAVA_HOME=/usr/lib/jvm/java-${JAVA_VERSION} && \
     # Reconfigure URLs
     APACHE_DOM="$(curl -s 'https://www.apache.org/dyn/closer.cgi?as_json=1' | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["preferred"]')" && \
     MVN_URL="${APACHE_DOM}$(echo ${MVN_URL} | sed -r -e 's!http://[^/]*/dist/!!g')" && \
     FLUME_URL="${APACHE_DOM}$(echo ${FLUME_URL} | sed -r -e 's!http://[^/]*/dist/!!g')" && \
-echo "${APACHE_DOM} ${MVN_URL} ${FLUME_URL}" && \
+    echo "INFO: Using Java version <${JAVA_VERSION}>" && echo "INFO: Using Apache preferred site <${APACHE_DOM}>" && echo "INFO: URL MAVEN <${MVN_URL}>" && echo "INFO: URL FLUME <${FLUME_URL}>" && \
     curl --remote-name --location --insecure --silent --show-error "${MVN_URL}" && \
     tar xzvf ${MVN_TGZ} && \
     mv apache-maven-${MVN_VER} ${MVN_HOME} && \
-    export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=128m" && \
+    export MAVEN_OPTS="-Xmx512m -Xms512m -XX:MaxPermSize=128m -Djava.net.preferIPv4Stack=true -Ddependency.locations.enabled=false" && \
     curl --remote-name --location --insecure --silent --show-error "${FLUME_URL}" && \
     tar zxf ${FLUME_TGZ} && \
     mv apache-flume-${FLUME_VER}-bin ${FLUME_HOME} && \
@@ -83,14 +84,14 @@ echo "Git version $(git --version)" && \
     # Build and install cygnus-common
     cd ${CYGNUS_HOME}/cygnus-common && \
 echo "4 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn -Ddependency.locations.enabled=false clean compile exec:exec assembly:single && \
+    ${MVN_HOME}/bin/mvn clean compile exec:exec assembly:single && \
 echo "5 => $(date '+%H%M%S')" && \
     cp target/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar ${FLUME_HOME}/plugins.d/cygnus/libext/ && \
-    ${MVN_HOME}/bin/mvn -Ddependency.locations.enabled=false install:install-file -Dfile=${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar -DgroupId=com.telefonica.iot -DartifactId=cygnus-common -Dversion=${CYGNUS_VERSION} -Dpackaging=jar -DgeneratePom=false && \
+    ${MVN_HOME}/bin/mvn install:install-file -Dfile=${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar -DgroupId=com.telefonica.iot -DartifactId=cygnus-common -Dversion=${CYGNUS_VERSION} -Dpackaging=jar -DgeneratePom=false && \
     # Build and install cygnus-ngsi
     cd ${CYGNUS_HOME}/cygnus-ngsi && \
 echo "6 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn -Ddependency.locations.enabled=false clean compile exec:exec assembly:single && \
+    ${MVN_HOME}/bin/mvn clean compile exec:exec assembly:single && \
 echo "7 => $(date '+%H%M%S')" && \
     cp target/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar ${FLUME_HOME}/plugins.d/cygnus/lib/ && \
     # Install Cygnus Application script
@@ -104,24 +105,27 @@ echo "7 => $(date '+%H%M%S')" && \
     # Cleanup to thin the final image
     cd ${CYGNUS_HOME}/cygnus-common && \
 echo "8 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn -Ddependency.locations.enabled=false clean && \
+    ${MVN_HOME}/bin/mvn clean && \
 echo "9 => $(date '+%H%M%S')" && \
     cd ${CYGNUS_HOME}/cygnus-ngsi && \
 echo "10 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn -Ddependency.locations.enabled=false clean && \
+    ${MVN_HOME}/bin/mvn clean && \
 echo "11 => $(date '+%H%M%S')" && \
     rm -rf /root/.m2 && rm -rf ${MVN_HOME} && rm -rf ${FLUME_HOME}/docs && rm -rf ${CYGNUS_HOME}/doc && rm -f /*.tar.gz && \
-    yum erase -y git java-1.7.0-openjdk-devel && unset JAVA_HOME && \
+    # Reduce two big jar files...
+    pack200 -J-Xmx1024M -J-Xms1024M ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar.pack.gz \
+      ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
+    pack200 -J-Xmx1024M -J-Xms1024M ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar.pack.gz \
+      ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
+echo "12 => $(date '+%H%M%S')" && \
+    unset JAVA_HOME && \
+    yum erase -y git java-${JAVA_VERSION}-openjdk-devel && \
     rpm -qa redhat-logos gtk2 pulseaudio-libs libvorbis jpackage* groff alsa* atk cairo libX* | xargs -r rpm -e --nodeps && yum -y erase libss && \
     yum clean all && rpm -vv --rebuilddb && rm -rf /var/lib/yum/yumdb && rm -rf /var/lib/yum/history && \
     find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en_US' ! -name 'locale.alias' | xargs -r rm -r && rm -f /var/log/*log && \
     bash -c 'localedef --list-archive | grep -v -e "en_US" | xargs localedef --delete-from-archive' && \
     /bin/cp -f /usr/lib/locale/locale-archive /usr/lib/locale/locale-archive.tmpl && \
     build-locale-archive && find ${CYGNUS_HOME} -name '.[^.]*' 2>/dev/null | xargs -r rm -rf && \
-echo "12 => $(date '+%H%M%S')" && \
-    # Reduce two big jar files...
-    pack200 ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar.pack.gz ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
-    pack200 ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar.pack.gz ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
 echo "13 => $(date '+%H%M%S')" && \
     rm -f ${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
     rm -f ${FLUME_HOME}/plugins.d/cygnus/lib/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar && \
