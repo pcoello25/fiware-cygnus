@@ -49,7 +49,7 @@ ENV FLUME_TGZ "apache-flume-${FLUME_VER}-bin.tar.gz"
 ENV FLUME_URL "http://archive.apache.org/dist/flume/${FLUME_VER}/${FLUME_TGZ}"
 ENV FLUME_HOME "/opt/apache-flume"
 
-ARG JAVA_VERSION=1.6.0
+ARG JAVA_VERSION="1.6.0"
 
 # Install
 RUN \
@@ -66,7 +66,7 @@ echo "1 => $(date '+%H%M%S')" && \
     curl --remote-name --location --insecure --silent --show-error "${MVN_URL}" && \
     tar xzvf ${MVN_TGZ} && \
     mv apache-maven-${MVN_VER} ${MVN_HOME} && \
-    export MAVEN_OPTS="-Xmx512m -Xms512m -XX:MaxPermSize=128m -Djava.net.preferIPv4Stack=true -Ddependency.locations.enabled=false" && \
+    export MAVEN_OPTS="-Xmx512m -Xms512m -XX:MaxPermSize=128m -Djava.net.preferIPv4Stack=true -Ddependency.locations.enabled=false -client" && \
     curl --remote-name --location --insecure --silent --show-error "${FLUME_URL}" && \
     tar zxf ${FLUME_TGZ} && \
     mv apache-flume-${FLUME_VER}-bin ${FLUME_HOME} && \
@@ -84,14 +84,14 @@ echo "Git version $(git --version)" && \
     # Build and install cygnus-common
     cd ${CYGNUS_HOME}/cygnus-common && \
 echo "4 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn clean compile exec:exec assembly:single && \
+    ${MVN_HOME}/bin/mvn -X -T 4 -B clean compile exec:exec assembly:single && \
 echo "5 => $(date '+%H%M%S')" && \
     cp target/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar ${FLUME_HOME}/plugins.d/cygnus/libext/ && \
-    ${MVN_HOME}/bin/mvn install:install-file -Dfile=${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar -DgroupId=com.telefonica.iot -DartifactId=cygnus-common -Dversion=${CYGNUS_VERSION} -Dpackaging=jar -DgeneratePom=false && \
+    ${MVN_HOME}/bin/mvn -X -T 4 -B install:install-file -Dfile=${FLUME_HOME}/plugins.d/cygnus/libext/cygnus-common-${CYGNUS_VERSION}-jar-with-dependencies.jar -DgroupId=com.telefonica.iot -DartifactId=cygnus-common -Dversion=${CYGNUS_VERSION} -Dpackaging=jar -DgeneratePom=false && \
     # Build and install cygnus-ngsi
     cd ${CYGNUS_HOME}/cygnus-ngsi && \
 echo "6 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn clean compile exec:exec assembly:single && \
+    ${MVN_HOME}/bin/mvn -X -T 4 -B clean compile exec:exec assembly:single && \
 echo "7 => $(date '+%H%M%S')" && \
     cp target/cygnus-ngsi-${CYGNUS_VERSION}-jar-with-dependencies.jar ${FLUME_HOME}/plugins.d/cygnus/lib/ && \
     # Install Cygnus Application script
@@ -105,11 +105,11 @@ echo "7 => $(date '+%H%M%S')" && \
     # Cleanup to thin the final image
     cd ${CYGNUS_HOME}/cygnus-common && \
 echo "8 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn clean && \
+    ${MVN_HOME}/bin/mvn -X -T 4 -B clean && \
 echo "9 => $(date '+%H%M%S')" && \
     cd ${CYGNUS_HOME}/cygnus-ngsi && \
 echo "10 => $(date '+%H%M%S')" && \
-    ${MVN_HOME}/bin/mvn clean && \
+    ${MVN_HOME}/bin/mvn -X -T 4 -B clean && \
 echo "11 => $(date '+%H%M%S')" && \
     rm -rf /root/.m2 && rm -rf ${MVN_HOME} && rm -rf ${FLUME_HOME}/docs && rm -rf ${CYGNUS_HOME}/doc && rm -f /*.tar.gz && \
     # Reduce two big jar files...
